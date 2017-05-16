@@ -34,9 +34,7 @@ func playAnimation(anim, force):
     if self._curAnimation == anim && !force:
         # Does nothing since the animation isn't going to change
         return
-    elif !anim in self._animations:
-        printerr("Invalid animation")
-        return
+    assert(anim in self._animations)
 
     # Retrieve the animation and cache the relevant info
     self._animObject = self._animations[anim]
@@ -47,6 +45,7 @@ func playAnimation(anim, force):
         # Make it ~animated~
         self.set_process(true)
     else:
+        # Single frame "animation"
         self.set_process(false)
     self._accDelay = 0
     self._loopCount = 0
@@ -59,29 +58,23 @@ func _ready():
     # but Godot complains about globals and thread safety, so...)
     var cache = get_node("/root/thePool").AnimationCache
 
-    if animationData == null:
-        printerr("AnimationData can't be null")
-        return
-    elif animationData.empty():
-        printerr("AnimationData can't be empty!")
-        return
+    assert(animationData != null)
+    assert(!animationData.empty())
 
     # Check if cached and load if necessary
     if animationData in cache:
         self._animations = cache[animationData]
     else:
         var fp = File.new()
-        if !fp.file_exists(animationData):
-            printerr("Failed to find AnimationData")
-            return
+        assert(fp.file_exists(animationData))
         fp.open(animationData, File.READ)
         var json = fp.get_as_text()
         fp.close()
 
+        # Parse the animations and cache it
         self._animations = {}
-        if self._animations.parse_json(json) != OK:
-            printerr("Failed to parse animation")
-            return
+        assert(self._animations.parse_json(json) == OK)
+        cache[animationData] = self._animations
 
     if !defaultAnimation.empty():
         self.playAnimation(defaultAnimation, true)
