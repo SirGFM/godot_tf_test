@@ -1,0 +1,12 @@
+{
+    "stand": {
+        "frames": [16],
+        "fps": 0,
+        "loop": false
+    },
+    "walk": {
+        "frames": [17, 18, 19, 20],
+        "fps": 8,
+        "loop": false
+    }
+}
