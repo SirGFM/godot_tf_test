@@ -5,12 +5,16 @@ export(String) var animationData
 # Animation that plays whenever one finishes
 export(String) var defaultAnimation
 
+# Signal emitted whenever the animation changes frame
+signal just_switched_frame(animationName)
+# Signal emitted whenever the animation finishes playing
+signal just_finished(animationName, frame)
+
 # Animation are JSON objects which SHALL contain the following fields:
 #   * frames -- Array of frames indexes, in the order they should be played
 #   * fps -- Animation speed in frames-per-second
 #   * loop -- Whether the animation should loop or not
 var _animations
-
 # The current animation
 var _curAnimation
 # Time until the next frame
@@ -21,6 +25,8 @@ var _accDelay
 var _curFrame
 # Object of the current animation
 var _animObject
+# How many times the animation has looped
+var _loopCount
 
 # Play an animation. Whenever a new animation is played (or force is set), the
 # animation is reset to its initial state.
@@ -43,17 +49,12 @@ func playAnimation(anim, force):
     else:
         self.set_process(false)
     self._accDelay = 0
+    self._loopCount = 0
 
     # Update the graphic to the animation's first frame
     self.set_frame(self._animObject.frames[0])
 
 func _ready():
-    # Something along this:
-    #   1. Check if cached
-    #   2. Load file to string
-    #   3. Decode string's JSON (`parse_json(str)`)
-    #   4. Store into cache tagged by file's MD5
-
     # TODO Wrap this within a mutex or something (it shouldn't be required,
     # but Godot complains about globals and thread safety, so...)
     var cache = get_node("/root/thePool").AnimationCache
@@ -96,17 +97,20 @@ func _process(delta):
         self._curFrame += 1
         # Check if animation ended
         if self._curFrame >= self._animObject.frames.size():
+            self._loopCount += 1
             if self._animObject.loop:
                 # Animation ended but it loops, go back to the first frame
-                # TODO Increase finish count!
-                # TODO Send 'just_finished' signal
+                self.emit_signal("just_switched_frame", self._curAnimation, self._curFrame)
                 self._curFrame = 0
             else:
                 # Animation ended. Go back to default, if any
+                self.emit_signal("just_finished", self._curAnimation)
                 if self.defaultAnimation:
                     self.playAnimation(self.defaultAnimation, true)
                 else:
                     self.set_process(false)
                 return
+        else:
+            self.emit_signal("just_switched_frame", self._curAnimation, self._curFrame)
         self.set_frame(self._animObject.frames[self._curFrame])
 
